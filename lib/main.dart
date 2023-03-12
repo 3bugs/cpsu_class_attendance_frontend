@@ -26,6 +26,9 @@ class MyApp extends StatelessWidget {
           bodySmall: TextStyle(fontSize: 16.0),
           labelLarge: TextStyle(fontSize: 20.0), // ข้อความบนปุ่ม
         ),
+        snackBarTheme: const SnackBarThemeData(
+          actionTextColor: Colors.yellowAccent,
+        ),
         materialTapTargetSize: MaterialTapTargetSize.padded,
       ),
       home: const LoginPage(),

@@ -14,9 +14,12 @@ class _AttendancePageState extends State<AttendancePage> {
     return Center(
       child: ElevatedButton(
         onPressed: () async {
-          var checkInSuccess = await ApiClient().studentCheckIn('555', 1);
-
-          debugPrint(checkInSuccess.toString());
+          try {
+            var checkInSuccess = await ApiClient().studentCheckIn('555', 1);
+            debugPrint(checkInSuccess ? 'Check-in สำเร็จ' : 'เกิดข้อผิดพลาดในการ check-in');
+          } catch (e) {
+            debugPrint(e.toString());
+          }
         },
         child: const Padding(
           padding: EdgeInsets.all(24.0),

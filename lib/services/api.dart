@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -13,69 +12,55 @@ enum HttpMethod {
   post,
 }
 
+extension ParseToString on HttpMethod {
+  String toShortStringUpperCase() {
+    return toString().split('.').last.toUpperCase();
+  }
+}
+
 class ApiClient {
   static const apiBaseUrl = 'http://localhost:3000/api';
 
   Future<List<Student>> getAllStudents() async {
-    try {
-      var responseBody = await _makeRequest(
-        HttpMethod.get,
-        '/students',
-      );
-      List list = responseBody.data;
-      return list.map((item) => Student.fromJson(item)).toList();
-    } catch (e) {
-      debugPrint(e.toString());
-      rethrow;
-    }
+    var responseBody = await _makeRequest(
+      HttpMethod.get,
+      '/students',
+    );
+    List list = responseBody.data;
+    return list.map((item) => Student.fromJson(item)).toList();
   }
 
   Future<Student?> getStudentById(String id) async {
-    try {
-      var responseBody = await _makeRequest(
-        HttpMethod.get,
-        '/students/$id',
-      );
-      Map<String, dynamic>? map = responseBody.data;
-      return map != null ? Student.fromJson(map) : null;
-    } catch (e) {
-      debugPrint(e.toString());
-      rethrow;
-    }
+    var responseBody = await _makeRequest(
+      HttpMethod.get,
+      '/students/$id',
+    );
+    Map<String, dynamic>? map = responseBody.data;
+    return map != null ? Student.fromJson(map) : null;
   }
 
   Future<Student?> studentLogin(String studentId, String password) async {
-    try {
-      var responseBody = await _makeRequest(
-        HttpMethod.get,
-        '/students/$studentId/login',
-        {'password': password},
-      );
-      Map<String, dynamic>? map = responseBody.data;
-      return map != null ? Student.fromJson(map) : null;
-    } catch (e) {
-      debugPrint(e.toString());
-      rethrow;
-    }
+    var responseBody = await _makeRequest(
+      HttpMethod.get,
+      '/students/$studentId/login',
+      {'password': password},
+    );
+    Map? map = responseBody.data;
+    return map != null ? Student.fromJson(map as Map<String, dynamic>) : null;
   }
 
   Future<bool> studentCheckIn(String studentId, int classId) async {
-    try {
-      var responseBody = await _makeRequest(
-        HttpMethod.post,
-        '/classes/$classId/attend',
-        {'studentId': studentId},
-      );
-      bool result = responseBody.data;
-      return result;
-    } catch (e) {
-      debugPrint(e.toString());
-      rethrow;
-    }
+    var responseBody = await _makeRequest(
+      HttpMethod.post,
+      '/classes/$classId/attend',
+      {'studentId': studentId},
+    );
+    bool result = responseBody.data;
+    return result;
   }
 
   Future<ResponseBody> _makeRequest(
-    HttpMethod method,
+    HttpMethod httpMethod,
     String path, [
     Map<String, dynamic>? params,
   ]) async {
@@ -84,11 +69,12 @@ class ApiClient {
       'Accept': 'application/json',
     };
 
-    Uri uri;
-    http.Response response;
+    Uri? uri;
+    http.Response? response;
+    var isError = false;
 
     try {
-      switch (method) {
+      switch (httpMethod) {
         // GET method
         case HttpMethod.get:
           String queryString = Uri(queryParameters: params).query;
@@ -111,88 +97,56 @@ class ApiClient {
           );
           break;
       }
+    } catch (e) {
+      // ดัก error ที่เกิดขึ้นในกรณียังไม่ได้ response กลับมาจาก API
+      // เช่น ไม่มี network connection, server down เป็นต้น
 
-      debugPrint('URL: ${uri.toString()}');
-      debugPrint('Response Status Code: ${response.statusCode.toString()}');
-    } on SocketException {
-      throw 'No Internet connection';
-    } on TimeoutException catch (e) {
-      throw 'Connection timeout';
-    } on Error catch (e) {
-      debugPrint('Error: $e');
-      throw '$e';
+      isError = true;
+      _logError(httpMethod, uri, e.toString());
+      throw e.toString();
+    } finally {
+      if (!isError && _isSuccessResponse(response)) {
+        debugPrint('┌──────────────────────────────────────────────────────────────────────────────────────────');
+        debugPrint('│ ✔ HTTP Method / URL:           ${httpMethod.toShortStringUpperCase()} ${uri.toString()}');
+        debugPrint("│ ✔ HTTP Response's Status Code: ${response?.statusCode}");
+        debugPrint('└──────────────────────────────────────────────────────────────────────────────────────────');
+      }
     }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return ResponseBody.fromJson(jsonDecode(response.body));
+    ResponseBody? responseBody;
+    String? errMessage;
+    try {
+      // ดักกรณี response body ไม่ได้เป็น JSON
+
+      responseBody = ResponseBody.fromJson(jsonDecode(response.body));
+    } catch (e) {
+      errMessage = response.body;
+    }
+
+    if (_isSuccessResponse(response)) {
+      return responseBody!;
     } else {
-      throw 'Error ${response.statusCode}: ${response.body}';
+      // ดัก error กรณีได้ response กลับมาจาก API แล้ว
+      // แต่ status code ของ response ไม่ใช่ 200, 201
+
+      // todo: test กรณีนี้
+      var msg = responseBody?.message ?? errMessage ?? 'Unknown Error';
+      _logError(httpMethod, uri, responseBody?.message ?? errMessage ?? 'Unknown Error !!!', response.statusCode);
+      throw msg;
     }
   }
 
-/*static Future<ResponseBody> _fetch(String path, [Map<String, dynamic>? queryParams]) async {
-    http.Response response;
-
-    try {
-      String queryString = Uri(queryParameters: queryParams).query;
-      var url = Uri.parse('$apiBaseUrl$path?$queryString');
-
-      response = await http.get(
-        url,
-        headers: {
-          'Content-type': 'application/json',
-          'Accept': 'application/json',
-        },
-      );
-
-      debugPrint('URL: ${url.toString()}');
-      debugPrint('Response Status Code: ${response.statusCode.toString()}');
-    } on SocketException {
-      throw 'No Internet connection';
-    } on TimeoutException catch (e) {
-      throw 'Connection timeout';
-    } on Error catch (e) {
-      debugPrint('Error: $e');
-      throw '$e';
-    }
-
-    if (response.statusCode == 200) {
-      return ResponseBody.fromJson(jsonDecode(response.body));
-    } else {
-      throw 'Error ${response.statusCode}: ${response.body}';
-    }
+  bool _isSuccessResponse(http.Response? response) {
+    return (response?.statusCode == 200 || response?.statusCode == 201);
   }
 
-  Future<ResponseBody> _submit(String path, Map<String, dynamic> bodyParams) async {
-    http.Response response;
-
-    try {
-      var url = Uri.parse('$apiBaseUrl$path');
-
-      response = await http.post(
-        url,
-        headers: {
-          'Content-type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(bodyParams),
-      );
-
-      debugPrint('URL: ${url.toString()}');
-      debugPrint('Response Status Code: ${response.statusCode.toString()}');
-    } on SocketException {
-      throw 'No Internet connection';
-    } on TimeoutException catch (e) {
-      throw 'Connection timeout';
-    } on Error catch (e) {
-      debugPrint('Error: $e');
-      throw '$e';
-    }
-
-    if (response.statusCode == 200) {
-      return ResponseBody.fromJson(jsonDecode(response.body));
-    } else {
-      throw 'Error ${response.statusCode}: ${response.body}';
-    }
-  }*/
+  void _logError(HttpMethod httpMethod, Uri? uri, String errMessage, [int? statusCode]) {
+    debugPrint('    ┌───────────┐');
+    debugPrint('┌───┤ ⚡ ERROR ⚡ ├──────────────────────────────────────────────────────────────────────────');
+    debugPrint('│   └───────────┘');
+    debugPrint('│ ✏ HTTP Method / URL:           ${httpMethod.toShortStringUpperCase()} ${uri.toString()}');
+    debugPrint("│ ✏ HTTP Response's Status Code: ${statusCode ?? 'N/A (ยังไม่ได้ response จาก API)'}");
+    debugPrint('│ ✏ Error Message:               $errMessage');
+    debugPrint('└──────────────────────────────────────────────────────────────────────────────────────────');
+  }
 }

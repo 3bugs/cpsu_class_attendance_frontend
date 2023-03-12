@@ -114,23 +114,46 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = true;
       });
 
-      var student = await ApiClient().studentLogin(
-        _usernameController.text,
-        _passwordController.text,
-      );
-
-      if (!mounted) return;
-      if (student != null) {
-        var displayName = '${student.firstName} ${student.lastName}';
-        debugPrint(displayName);
-        _showSnackBar('Hi, $displayName', 5);
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage(student: student)),
+      try {
+        var student = await ApiClient().studentLogin(
+          _usernameController.text,
+          _passwordController.text,
         );
-      } else {
-        _showSnackBar('รหัสนักศึกษาหรือรหัสผ่าน ไม่ถูกต้อง !!!', 10);
+
+        if (!mounted) return;
+        if (student != null) {
+          var displayName = '${student.firstName} ${student.lastName}';
+          debugPrint(displayName);
+          _showSnackBar(
+            'Hi, $displayName',
+            durationSeconds: 10,
+            action: SnackBarAction(
+              label: 'Close',
+              onPressed: () {},
+            ),
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage(student: student)),
+          );
+        } else {
+          _showSnackBar(
+            'รหัสนักศึกษาหรือรหัสผ่าน ไม่ถูกต้อง !!!',
+            action: SnackBarAction(
+              label: 'Close',
+              onPressed: () {},
+            ),
+          );
+        }
+      } catch (e) {
+        _showSnackBar(
+          'เกิดข้อผิดพลาดในการเชื่อมต่อ API:\n${e.toString()}',
+          action: SnackBarAction(
+            label: 'Close',
+            onPressed: () {},
+          ),
+        );
       }
 
       setState(() {
@@ -139,12 +162,13 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _showSnackBar(String message, int durationSeconds) {
+  void _showSnackBar(String message, {int? durationSeconds, SnackBarAction? action}) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        duration: Duration(seconds: durationSeconds),
+        duration: Duration(seconds: durationSeconds ?? 365 * 24 * 60 * 60),
+        action: action,
       ),
     );
   }
