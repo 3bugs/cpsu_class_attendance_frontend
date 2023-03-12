@@ -1,3 +1,4 @@
+import 'package:classroom_attendance/services/api.dart';
 import 'package:flutter/material.dart';
 
 class AttendancePage extends StatefulWidget {
@@ -10,8 +11,18 @@ class AttendancePage extends StatefulWidget {
 class _AttendancePageState extends State<AttendancePage> {
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Attendance Page'),
+    return Center(
+      child: ElevatedButton(
+        onPressed: () async {
+          var checkInSuccess = await ApiClient().studentCheckIn('555', 1);
+
+          debugPrint(checkInSuccess.toString());
+        },
+        child: const Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text('Check In Class 4'),
+        ),
+      ),
     );
   }
 }

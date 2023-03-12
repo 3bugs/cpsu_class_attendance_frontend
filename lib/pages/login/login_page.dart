@@ -61,8 +61,8 @@ class _LoginPageState extends State<LoginPage> {
                         labelText: 'รหัสนักศึกษา',
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'ต้องกรอกรหัสนักศึกษา';
+                        if (value == null || value.length != 9) {
+                          return 'ต้องกรอกรหัสนักศึกษา 9 หลัก';
                         }
                         return null;
                       },
@@ -100,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(0.8),
               child: const Center(child: CircularProgressIndicator()),
             ),
         ],

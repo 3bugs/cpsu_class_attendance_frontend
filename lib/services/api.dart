@@ -59,7 +59,26 @@ class ApiClient {
     }
   }
 
-  Future<ResponseBody> _makeRequest(HttpMethod method, String path, [Map<String, dynamic>? params]) async {
+  Future<bool> studentCheckIn(String studentId, int classId) async {
+    try {
+      var responseBody = await _makeRequest(
+        HttpMethod.post,
+        '/classes/$classId/attend',
+        {'studentId': studentId},
+      );
+      bool result = responseBody.data;
+      return result;
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<ResponseBody> _makeRequest(
+    HttpMethod method,
+    String path, [
+    Map<String, dynamic>? params,
+  ]) async {
     final headers = {
       'Content-type': 'application/json',
       'Accept': 'application/json',
@@ -104,7 +123,7 @@ class ApiClient {
       throw '$e';
     }
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return ResponseBody.fromJson(jsonDecode(response.body));
     } else {
       throw 'Error ${response.statusCode}: ${response.body}';
